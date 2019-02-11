@@ -33,9 +33,10 @@
  **************************************************************************************************/
 
 #include "objectdetector.h"
+#include "../ObjectRotator/ObjectRotator.h"
 
-ObjectDetector::ObjectDetector(const vector<string> &images, Feat::Code feat, Desc::Code desc) :
-classifiers(images.size()), filter(4), percent(0), faces(images.size())
+ObjectDetector::ObjectDetector(const vector<string> &images, Feat::Code feat, Desc::Code desc, ObjectRotator *rotator) :
+classifiers(images.size()), filter(4), percent(0), faces(images.size()), rotator(rotator)
 {
     
     Space yaw(-30, 30, 60);
@@ -126,7 +127,6 @@ void toRGB(const Mat &frame, Mat &rgb)
 
 void ObjectDetector::operator()(const size_t frame_number, const Mat &frameInput, Mat &frameOut)
 {
-    
 //    clock_t A = clock();
     vector<Point2f> corners;
     Mat frame;
@@ -140,8 +140,7 @@ void ObjectDetector::operator()(const size_t frame_number, const Mat &frameInput
 //    cc.push_back(rect.br());
 //    cc.push_back(rect.tl() + Point(0,rect.height));
 //    fillConvexPoly(mask, &cc[0], (int)cc.size(), 255, 8 , 0);
-    
-    
+
     int levels = 3;
     GaussianBlur(frame, frame, Size(3,3), 3, 3);
     vector<Mat> frames;
@@ -157,8 +156,6 @@ void ObjectDetector::operator()(const size_t frame_number, const Mat &frameInput
 //    clock_t C = clock();
     descExtractor->compute(frames, keypoints, descriptors);
 //    clock_t D = clock();
-    
-    
 
     int idx = 0, maxInliers = 0;
     bool possibleObjectView = false;
@@ -221,9 +218,55 @@ void ObjectDetector::operator()(const size_t frame_number, const Mat &frameInput
             FernUtils::drawObject(frameOut, corners, purple, blue, shift, percent);
             FernUtils::drawCorners(frameOut, corners, green, shift);
             rect = boundingRect(corners);
-            //rectangle(frameOut, rect.tl(), rect.br(), blue, 4);
             stringstream ss;
             ss << "Object View Detected: " << (idx + 1);
+
+            // Object Rotator Plug
+            if (rotator)
+            {
+                // TODO Reference https://www.learnopencv.com/head-pose-estimation-using-opencv-and-dlib/
+                std::vector<cv::Point3d> model_points;
+                model_points.emplace_back(clCorners[3].x, clCorners[3].y, 0.0f); //3
+                model_points.emplace_back(clCorners[0].x, clCorners[0].y, 0.0f); //0
+                model_points.emplace_back(clCorners[1].x, clCorners[1].y, 0.0f); //1
+                model_points.emplace_back(clCorners[2].x, clCorners[2].y, 0.0f); //2
+
+                std::vector<cv::Point2d> image_points;
+                image_points.emplace_back(corners[0].x, corners[0].y);
+                image_points.emplace_back(corners[1].x, corners[1].y);
+                image_points.emplace_back(corners[2].x, corners[2].y);
+                image_points.emplace_back(corners[3].x, corners[3].y);
+
+                double focal_length = frame.cols; // Approximate focal length.
+                Point2d center = cv::Point2d(frame.cols/2.0f, frame.rows/2.0f);
+                cv::Mat camera_matrix = (cv::Mat_<double>(3,3) << focal_length, 0, center.x, 0 , focal_length, center.y, 0, 0, 1);
+                cv::Mat dist_coeffs = cv::Mat::zeros(4,1,cv::DataType<double>::type); // Assuming no lens distortion
+
+                cv::Mat rotation_vector;
+                cv::Mat translation_vector;
+
+                cv::solvePnP(model_points, image_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector);
+
+                vector<Point3d> endpoints_3D;
+                vector<Point2d> endpoints_2D;
+                endpoints_3D.emplace_back(0, 0, -1.0);
+
+                projectPoints(endpoints_3D, rotation_vector, translation_vector, camera_matrix, dist_coeffs, endpoints_2D);
+
+                cv::line(frameOut, image_points[0], endpoints_2D[0], purple, 2);
+
+                normalize(rotation_vector, rotation_vector, 1, 0, NORM_L1);
+
+                glm::vec3 openGlNormal = glm::vec3((float)((double *) rotation_vector.data)[0],
+                                         -(float)((double *) rotation_vector.data)[1],
+                                         -(float)((double *) rotation_vector.data)[2]);
+
+                // Use the face index and the face normal to rotate.
+                const float increment = 1.0f / faces.size();
+                float faceIndexRotation = idx * increment * 2.0f * ObjectRotator::PI;
+                rotator->setRotation(openGlNormal, faceIndexRotation);
+            }
+
             putText(frameOut, ss.str() , Point(40,30), FONT_HERSHEY_DUPLEX, 1, blue);
             rect = boundingRect(corners);
             countMissingFrames = 0;
@@ -242,6 +285,7 @@ void ObjectDetector::operator()(const size_t frame_number, const Mat &frameInput
             else
                 rect = Rect(0,0,frame.cols, frame.rows);
         }
+
     }
     if (lastKnowCorners.size() == 4)
         filter.correct(lastKnowCorners);
@@ -259,7 +303,8 @@ void ObjectDetector::operator()(const size_t frame_number, const Mat &frameInput
 //           1.0/(double(E-D)/CLOCKS_PER_SEC),
 //           double(FE-E)/CLOCKS_PER_SEC,
 //           1.0/(double(FE-E)/CLOCKS_PER_SEC));
-    
+    rotator->renderCube();
+
     frames.clear();
     masks.clear();
     keypoints.clear();

@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <limits.h>
 #include <math.h>
 #include <emmintrin.h>

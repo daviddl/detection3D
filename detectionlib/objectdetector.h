@@ -45,6 +45,8 @@
 
 using namespace viva;
 
+class ObjectRotator;
+
 class ObjectDetector : public  ProcessFrame
 {
 private:
@@ -54,6 +56,8 @@ private:
     Ptr<FeatureDetector>     featDetector;
     Ptr<DescriptorExtractor> descExtractor;
     vector<Classifier>   classifiers;
+
+    ObjectRotator *rotator;
 
     int countMissingFrames;
     Rect    rect;
@@ -79,7 +83,7 @@ public:
      *              file "pic.jpg"
      *
      */
-    ObjectDetector(const vector<string> &images, Feat::Code feat, Desc::Code desc);
+    ObjectDetector(const vector<string> &images, Feat::Code feat, Desc::Code desc, ObjectRotator*);
     
     void operator()(const size_t frameN, const Mat &frame, Mat &output);
     
