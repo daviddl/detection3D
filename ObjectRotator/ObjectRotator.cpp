@@ -51,9 +51,6 @@ void ObjectRotator::setRotation(const glm::vec3 &normal, float radians)
     float directDifference = abs(desiredAngle - currentAngle);
     float wrapDifference = abs((desiredAngle + 2 * PI) - currentAngle);
 
-    std::cout << "Direct difference: " <<  directDifference << std::endl;
-    std::cout << "Wrap difference:   " << wrapDifference << std::endl;
-
     if (directDifference  > wrapDifference)
     {
         desiredAngle += + PI * 2;

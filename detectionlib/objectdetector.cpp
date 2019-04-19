@@ -35,7 +35,7 @@
 #include "objectdetector.h"
 #include "../ObjectRotator/ObjectRotator.h"
 
-ObjectDetector::ObjectDetector(const vector<string> &images, Feat::Code feat, Desc::Code desc, ObjectRotator *rotator) :
+ObjectDetector::ObjectDetector(const vector<string> &images, Feat::Code feat, Desc::Code desc, ObjectRotator *rotator = nullptr) :
 classifiers(images.size()), filter(4), percent(0), faces(images.size()), rotator(rotator)
 {
     
@@ -195,7 +195,6 @@ void ObjectDetector::operator()(const size_t frame_number, const Mat &frameInput
     
     if (possibleObjectView)
     {
-
         Mat F, H;
         vector<Point2f> oFInliners, sFInliers, corners, fCorners;
         vector<Vec3f> eLines;
@@ -224,7 +223,6 @@ void ObjectDetector::operator()(const size_t frame_number, const Mat &frameInput
             // Object Rotator Plug
             if (rotator)
             {
-                // TODO Reference https://www.learnopencv.com/head-pose-estimation-using-opencv-and-dlib/
                 std::vector<cv::Point3d> model_points;
                 model_points.emplace_back(clCorners[3].x, clCorners[3].y, 0.0f); //3
                 model_points.emplace_back(clCorners[0].x, clCorners[0].y, 0.0f); //0
@@ -303,7 +301,11 @@ void ObjectDetector::operator()(const size_t frame_number, const Mat &frameInput
 //           1.0/(double(E-D)/CLOCKS_PER_SEC),
 //           double(FE-E)/CLOCKS_PER_SEC,
 //           1.0/(double(FE-E)/CLOCKS_PER_SEC));
-    rotator->renderCube();
+
+    if (rotator)
+    {
+        rotator->renderCube();
+    }
 
     frames.clear();
     masks.clear();

@@ -53,7 +53,6 @@ using namespace glm;
 
 #include <stdlib.h>
 
-void pushImages_Pot(vector<string> &);
 void pushImages_Cube(vector<string> &);
 ObjectRotator *initRotator();
 Processor *initDetector(int cameraId, ObjectRotator*);
@@ -112,7 +111,6 @@ Processor *initDetector(int cameraId, ObjectRotator *rotator)
 {
     vector<string> images;
     pushImages_Cube(images);
-//    pushImages_Pot(images);
 
     Feat::Code feat = Feat::RFAST;
     Desc::Code desc = Desc::BRIEF;
@@ -147,34 +145,22 @@ void pushImages_Cube(vector<string> &images)
     images.emplace_back("input/newCube/Face4.png");
 }
 
-void pushImages_Pot(vector<string> &images)
+GLuint LoadShaders(const char *vertex_file_path, const char *fragment_file_path)
 {
-    images.emplace_back("input/pot/Face1.png");
-    images.emplace_back("input/pot/Face2.png");
-    images.emplace_back("input/pot/Face3.png");
-    images.emplace_back("input/pot/Face4.png");
-    images.emplace_back("input/pot/Face5.png");
-    images.emplace_back("input/pot/Face6.png");
-    images.emplace_back("input/pot/Face7.png");
-    images.emplace_back("input/pot/Face8.png");
-}
-
-
-GLuint LoadShaders(const char * vertex_file_path, const char *fragment_file_path){
-
-    // Create the shaders
     GLuint VertexShaderID = glCreateShader(GL_VERTEX_SHADER);
     GLuint FragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
 
-    // Read the Vertex Shader code from the file
     std::string VertexShaderCode;
     std::ifstream VertexShaderStream(vertex_file_path, std::ios::in);
-    if(VertexShaderStream.is_open()){
+    if(VertexShaderStream.is_open())
+    {
         std::stringstream sstr;
         sstr << VertexShaderStream.rdbuf();
         VertexShaderCode = sstr.str();
         VertexShaderStream.close();
-    }else{
+    }
+    else
+    {
         printf("Impossible to open %s. Are you in the right directory ? Don't forget to read the FAQ !\n", vertex_file_path);
         getchar();
         return 0;
@@ -209,8 +195,6 @@ GLuint LoadShaders(const char * vertex_file_path, const char *fragment_file_path
         printf("%s\n", &VertexShaderErrorMessage[0]);
     }
 
-
-
     // Compile Fragment Shader
     printf("Compiling shader : %s\n", fragment_file_path);
     char const * FragmentSourcePointer = FragmentShaderCode.c_str();
@@ -225,8 +209,6 @@ GLuint LoadShaders(const char * vertex_file_path, const char *fragment_file_path
         glGetShaderInfoLog(FragmentShaderID, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
         printf("%s\n", &FragmentShaderErrorMessage[0]);
     }
-
-
 
     // Link the program
     printf("Linking program\n");
@@ -243,7 +225,6 @@ GLuint LoadShaders(const char * vertex_file_path, const char *fragment_file_path
         glGetProgramInfoLog(ProgramID, InfoLogLength, NULL, &ProgramErrorMessage[0]);
         printf("%s\n", &ProgramErrorMessage[0]);
     }
-
 
     glDetachShader(ProgramID, VertexShaderID);
     glDetachShader(ProgramID, FragmentShaderID);
